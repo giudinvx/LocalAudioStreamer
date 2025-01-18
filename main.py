@@ -7,17 +7,17 @@
 #  it under the terms of the GNU General Public License as published by
 #  the Free Software Foundation; either version 2 of the License, or
 #  (at your option) any later version.
-#  
+#
 #  This program is distributed in the hope that it will be useful,
 #  but WITHOUT ANY WARRANTY; without even the implied warranty of
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #  GNU General Public License for more details.
-#  
+#
 #  You should have received a copy of the GNU General Public License
 #  along with this program; if not, write to the Free Software
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
-#  
+#
 import socket
 import gi
 import argparse
@@ -31,7 +31,26 @@ from gi.repository import Gst, GLib, GObject, GstRtspServer
 Gst.init(None)
 
 class LocalAudioStreamer:
+    """
+    Shares the current audio playback on the PC as an RTSP stream.
+    """
     def __init__(self, port=8554, mount_point="/audio", codec="vorbis", bitrate=128, device=None):
+        """
+        Initializes the AudioStreamer with default port, mount point, codec, bitrate and device.
+
+        Args:
+            port (int, optional): The port to listen on for RTSP connections.
+                                  Defaults to 8554.
+            mount_point (str, optional): The mount point for the RTSP stream.
+                                         Defaults to "/audio".
+            codec (str, optional): The codec for encoding the audio.
+                                   Defults to vorbis.
+            bitrate (int, optional): The bitrate for the audio.
+                                     Defults to 128.
+            device (str): The system's default audio input device.
+                          Defults to None.
+        """
+
         self.port = port
         self.mount_point = mount_point
         self.codec = codec
@@ -42,6 +61,9 @@ class LocalAudioStreamer:
         self.logger = logging.getLogger(__name__)
 
     def _find_audio_device(self):
+        """
+        Find the system's default input device or choose one
+        """
         if self.device_name:
             self.logger.info(f"Using specified device: {self.device_name}")
             return # Use specified device
@@ -71,18 +93,32 @@ class LocalAudioStreamer:
 
 
     def _get_local_ip(self):
+        """
+        Find your device's IP address
+        """
         try:
             s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            s.connect(("8.8.8.8", 80))
+            s.connect(("8.8.8.8", 80))  # Connect to a public DNS server
             self.ip_address = s.getsockname()[0]
         except OSError:
-            self.ip_address = "127.0.0.1"
-            self.logger.warning("Could not determine local IP. Using loopback address.")
+            try:
+                # Fallback for systems without internet connectivity.
+                s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+                s.connect(('<broadcast>', 12345))
+                self.ip_address = s.getsockname()[0]
+            except OSError:
+                self.ip_address = "127.0.0.1" # Default to loopback if all else fails
+                print("Could not determine local IP. Using loopback address.")
         finally:
             s.close()
         self.logger.info(f"Local IP address: {self.ip_address}")
 
     def start_streaming(self):
+        """
+        Creates and configures the RTSP server.
+        Starts the audio streaming.
+        """
         try:
             self._find_audio_device()
             self._get_local_ip()
@@ -99,7 +135,7 @@ class LocalAudioStreamer:
             }
             if self.codec not in codec_elements:
                 raise ValueError(f"Invalid codec: {self.codec}. Supported codecs: {', '.join(codec_elements.keys())}")
-            
+
             launch_string = f"pulsesrc device={self.device_name}.monitor client-name=LocalAudioShare ! audioconvert ! audioresample ! {codec_elements[self.codec]}"
             factory.set_launch(launch_string)
             mounts.add_factory(self.mount_point, factory)
