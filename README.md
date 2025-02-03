@@ -12,10 +12,12 @@ If GStreamer is not installed, you can find installation instructions online for
 
 * **Python 3:** This script requires Python 3 to run. You can check if you have it by running python3 --version in your terminal. If not installed, download it from https://www.python.org/downloads/.  
  
+* **QrCode:** This library help you to generate the qrcode image  
+
 * **PyGObject:** This library allows Python to interact with GStreamer. You can install it using the following command in your terminal:
 Bash
 
-> $ pip install PyGObject
+> $ pip install requirements.txt
 ___
 **Usage:**  
 
@@ -26,6 +28,11 @@ ___
 > $ python3 main.py -v
 
 The *-v* flag enables verbose output, which will show you information like the available audio devices and the streaming address.  
+
+If you want use it with a graphical interface run:
+> $ python3 main.py -g  
+
+![](public/img.png)
 ___
 **Expected Output:**
 
